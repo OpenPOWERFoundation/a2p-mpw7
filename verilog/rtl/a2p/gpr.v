@@ -1,8 +1,13 @@
 `include "defs.v"
 
 module gpr #(
-   parameter EXPAND_TYPE=`INFERRED
+   parameter EXPAND_TYPE=`INFERRED,
+   parameter USE_LATCH=0
 ) (
+`ifdef USE_POWER_PINS
+    inout vccd1,	// User area 1 1.8V supply
+    inout vssd1,	// User area 1 digital ground
+`endif
    input clk,
    input   [4:0] rd_adr_0,
    output [31:0] rd_dat_0,
@@ -28,9 +33,13 @@ generate case (EXPAND_TYPE)
          end
       end
    end
-   `GPR_2R1W: begin: rf_2r1w
+   `GPR_2R1W: begin
       /* veeerilator is parsing this when not gen'd */
       DFFRF_2R1W #() rf_0 (
+`ifdef USE_POWER_PINS
+         .vccd1(vccd1),	// User area 1 1.8V supply
+         .vssd1(vssd1),	// User area 1 digital ground
+`endif
          .CLK(clk),
          .RA(rd_adr_0),
          .DA(rd_dat_0),
@@ -42,6 +51,10 @@ generate case (EXPAND_TYPE)
       );
       // should this be a ram_32x32?  any other diffs between reg/ram besides multiple we vs extra port?
       DFFRF_2R1W #() rf_1 (
+`ifdef USE_POWER_PINS
+         .vccd1(vccd1),	// User area 1 1.8V supply
+         .vssd1(vssd1),	// User area 1 digital ground
+`endif
          .CLK(clk),
          .RA(rd_adr_2),
          .DA(rd_dat_2),
@@ -53,7 +66,11 @@ generate case (EXPAND_TYPE)
       );
    end
    `GPR_3R1W: begin
-      reg_3r1w #() rf (
+      DFFRF_3R1W #() rf (
+`ifdef USE_POWER_PINS
+         .vccd1(vccd1),	// User area 1 1.8V supply
+         .vssd1(vssd1),	// User area 1 digital ground
+`endif
          .CLK(clk),
          .RA(rd_adr_0),
          .DA(rd_dat_0),
@@ -67,29 +84,50 @@ generate case (EXPAND_TYPE)
       );
    end
    `GPR_RAM: begin
-      ram_32x32 #() ra_0 (
+      RAM32_1RW1R #() ra_0 (
+`ifdef USE_POWER_PINS
+         .vccd1(vccd1),	// User area 1 1.8V supply
+         .vssd1(vssd1),	// User area 1 digital ground
+`endif
          .CLK(clk),
          .EN0('b1),
-         .A0(rd_adr_0),
-         .Do0(rd_dat_0),
+         .A0(wr_adr_0),
+         .Do0(),
          .WE0(wr_en_0),
-         .Di0(wr_dat_0)
+         .Di0(wr_dat_0),
+         .EN1('b1),
+         .A1(rd_adr_0),
+         .Do1(rd_dat_0)
       );
-      ram_32x32 #() ra_1 (
+      RAM32_1RW1R #() ra_1 (
+`ifdef USE_POWER_PINS
+         .vccd1(vccd1),	// User area 1 1.8V supply
+         .vssd1(vssd1),	// User area 1 digital ground
+`endif
          .CLK(clk),
          .EN0('b1),
-         .A0(rd_adr_1),
-         .Do0(rd_dat_1),
+         .A0(wr_adr_0),
+         .Do0(),
          .WE0(wr_en_0),
-         .Di0(wr_dat_0)
+         .Di0(wr_dat_0),
+         .EN1('b1),
+         .A1(rd_adr_1),
+         .Do1(rd_dat_1)
       );
-      ram_32x32 #() ra_2 (
+      RAM32_1RW1R #() ra_2 (
+`ifdef USE_POWER_PINS
+         .vccd1(vccd1),	// User area 1 1.8V supply
+         .vssd1(vssd1),	// User area 1 digital ground
+`endif
          .CLK(clk),
          .EN0('b1),
-         .A0(rd_adr_2),
-         .Do0(rd_dat_2),
+         .A0(wr_adr_0),
+         .Do0(),
          .WE0(wr_en_0),
-         .Di0(wr_dat_0)
+         .Di0(wr_dat_0),
+         .EN1('b1),
+         .A1(rd_adr_2),
+         .Do1(rd_dat_2)
       );
    end
 

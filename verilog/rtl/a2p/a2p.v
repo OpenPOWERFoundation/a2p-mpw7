@@ -1,6 +1,57 @@
-// Generator : SpinalHDL v1.4.0    git head : ecb5a80b713566f417ea3ea061f9969e73770a7f
+// Generator : SpinalHDL v1.4.0    git head cache_rd_dat: ecb5a80b713566f417ea3ea061f9969e73770a7f
 // Date      : 30/08/2022, 09:32:03
 // Component : A2P_MPW7
+
+// async reset changed to sync
+// add power pins to module a2p and array instantiations
+/*
+`ifdef USE_POWER_PINS
+    inout vccd1,	// User area 1 1.8V supply
+    inout vssd1,	// User area 1 digital ground
+`endif
+`ifdef USE_POWER_PINS
+    .vccd1(vccd1),	// User area 1 1.8V supply
+    .vssd1(vssd1),	// User area 1 digital ground
+`endif
+*/
+
+// these should work in sim (who knows if behaviorals match though)
+`define GPR_RA `GPR_3R1W        // needs 3R1W
+// InstructionCache
+`define ICT_RA `INFERRED
+`define ICD_RA `DATA_RAM_1RW1R  // needs 1RW; 32x4=128B
+// DataCache
+`define DCT_RA `INFERRED
+`define DCD_RA `DATA_RAM_1RW1R  // needs 1R1W; 32x4=128B
+/*
+`define GPR_RA `INFERRED
+`define ICT_RA `INFERRED
+`define ICD_RA `INFERRED
+`define DCT_RA `INFERRED
+`define DCD_RA `INFERRED
+*/
+
+/*
+// gpr, icdir, ic, dcdir, dc replaced by components (all unlatched outputs)
+`define GPR_RA `GPR_2R1W
+`define ICT_RA `DIR_RAM
+`define ICD_RA `DATA_RAM
+`define DCT_RA `DIR_RAM
+`define DCD_RA `DATA_RAM_1RW1R
+*/
+
+/*
+// gpr, icdir, ic, dcdir, dc replaced by components (all latched outputs)
+// gpr - unconditionally latches in original version, so just replace as wires
+`define GPR_RA `GPR_2R1W
+// ict/icd are conditionally latched based on ! io_cpu_fetch_isStuck
+// if read adr isn't also held, doesn't work directly
+`define ICT_RA `DIR_RAM
+`define ICD_RA `DATA_RAM
+`define DCT_RA `DIR_RAM
+`define DCD_RA `DATA_RAM_1RW1R
+*/
+
 
 `include "defs.v"
 
@@ -163,6 +214,10 @@
 
 
 module InstructionCache (
+`ifdef USE_POWER_PINS
+  inout vccd1,	// User area 1 1.8V supply
+  inout vssd1,	// User area 1 digital ground
+`endif
   input               io_flush,
   input               io_cpu_prefetch_isValid,
   output reg          io_cpu_prefetch_haltIt,
@@ -272,14 +327,47 @@ module InstructionCache (
   reg        [31:0]   _zz_10_;
   wire       [31:0]   decodeStage_hit_data;
   wire                decodeStage_protError;
-  reg [26:0] ways_0_tags [0:3];
-  reg [31:0] ways_0_datas [0:31];
+
+  //wtf ********************************************************************************
+  //reg [26:0] ways_0_tags [0:3];
+  wire  [26:0] dir_rd_dat;
+  dir #(.EXPAND_TYPE(`ICT_RA), .BITS(27), .ROWS(4), .USE_LATCH(0)) icdir (
+`ifdef USE_POWER_PINS
+    .vccd1(vccd1),	// User area 1 1.8V supply
+    .vssd1(vssd1),	// User area 1 digital ground
+`endif
+     .clk(clk),
+     .rd_adr (_zz_5_),
+     .rd_dat (dir_rd_dat),
+     .wr_en  ({4{_zz_2_}}),
+     .wr_adr (lineLoader_write_tag_0_payload_address),
+     .wr_dat (_zz_17_)
+  );
+
+  //reg [31:0] ways_0_datas [0:31];
+  wire [31:0] cache_rd_dat;
+  cache #(.EXPAND_TYPE(`ICD_RA), .ROWS(4*8), .USE_LATCH(0)) ic (
+`ifdef USE_POWER_PINS
+    .vccd1(vccd1),	// User area 1 1.8V supply
+    .vssd1(vssd1),	// User area 1 digital ground
+`endif
+     .clk(clk),
+     .rd_adr (_zz_8_),
+     .rd_dat (cache_rd_dat),
+     .wr_en  ({4{_zz_1_}}),
+     .wr_adr (lineLoader_write_data_0_payload_address),
+     .wr_dat (lineLoader_write_data_0_payload_data)
+  );
+  //wtf ********************************************************************************
 
   assign _zz_13_ = (! lineLoader_flushCounter[2]);
   assign _zz_14_ = (lineLoader_flushPending && (! (lineLoader_valid || io_cpu_fetch_isValid)));
   assign _zz_15_ = _zz_7_[0 : 0];
   assign _zz_16_ = _zz_7_[1 : 1];
   assign _zz_17_ = {lineLoader_write_tag_0_payload_data_address,{lineLoader_write_tag_0_payload_data_error,lineLoader_write_tag_0_payload_data_valid}};
+
+  //wtf ********************************************************************************
+  /*
   always @ (posedge clk) begin
     if(_zz_2_) begin
       ways_0_tags[lineLoader_write_tag_0_payload_address] <= _zz_17_;
@@ -291,7 +379,16 @@ module InstructionCache (
       _zz_11_ <= ways_0_tags[_zz_5_];
     end
   end
+  */
+  always @ (posedge clk) begin
+    if(_zz_6_) begin
+      _zz_11_ <= dir_rd_dat;
+    end
+  end
+  //wtf ********************************************************************************
 
+  //wtf ********************************************************************************
+  /*
   always @ (posedge clk) begin
     if(_zz_1_) begin
       ways_0_datas[lineLoader_write_data_0_payload_address] <= lineLoader_write_data_0_payload_data;
@@ -303,6 +400,13 @@ module InstructionCache (
       _zz_12_ <= ways_0_datas[_zz_8_];
     end
   end
+  */
+   always @ (posedge clk) begin
+    if(_zz_9_) begin
+      _zz_12_ <= cache_rd_dat;
+    end
+  end
+  //wtf ********************************************************************************
 
   always @ (*) begin
     _zz_1_ = 1'b0;
@@ -464,6 +568,10 @@ module InstructionCache (
 endmodule
 
 module DataCache (
+`ifdef USE_POWER_PINS
+  inout vccd1,	// User area 1 1.8V supply
+  inout vssd1,	// User area 1 digital ground
+`endif
   input               io_cpu_execute_isValid,
   input      [31:0]   io_cpu_execute_address,
   input               io_cpu_execute_args_wr,
@@ -611,11 +719,49 @@ module DataCache (
   wire                loader_counter_willOverflow;
   reg        [0:0]    loader_waysAllocator;
   reg                 loader_error;
+
+  //wtf ********************************************************************************
+  /*
   reg [26:0] DC_DIR_tags [0:3];
+  */
+  wire [26:0] dir_rd_dat;
+  dir #(.EXPAND_TYPE(`DCT_RA), .ROWS(4), .USE_LATCH(0)) dcdir (
+`ifdef USE_POWER_PINS
+    .vccd1(vccd1),	// User area 1 1.8V supply
+    .vssd1(vssd1),	// User area 1 digital ground
+`endif
+     .clk(clk),
+     .rd_adr (tagsReadCmd_payload),
+     .rd_dat (dir_rd_dat),
+     .wr_en  ({4{_zz_2_}}),
+     .wr_adr (tagsWriteCmd_payload_address),
+     .wr_dat (_zz_22_)
+  );
+
+  //wtf ********************************************************************************
+  /*
   reg [7:0] DC_DIR_data_symbol0 [0:31];
   reg [7:0] DC_DIR_data_symbol1 [0:31];
   reg [7:0] DC_DIR_data_symbol2 [0:31];
   reg [7:0] DC_DIR_data_symbol3 [0:31];
+  */
+
+  wire [31:0] cache_rd_dat;
+  wire [3:0] cache_we;
+  cache #(.EXPAND_TYPE(`DCD_RA), .ROWS(4*8), .USE_LATCH(0)) dc (
+`ifdef USE_POWER_PINS
+    .vccd1(vccd1),	// User area 1 1.8V supply
+    .vssd1(vssd1),	// User area 1 digital ground
+`endif
+     .clk(clk),
+     .rd_adr (dataReadCmd_payload),
+     .rd_dat (cache_rd_dat),
+     .wr_en  (cache_we),
+     .wr_adr (dataWriteCmd_payload_address),
+     .wr_dat (dataWriteCmd_payload_data)
+  );
+  //wtf ********************************************************************************
+
   reg [7:0] _zz_23_;
   reg [7:0] _zz_24_;
   reg [7:0] _zz_25_;
@@ -632,6 +778,9 @@ module DataCache (
   assign _zz_20_ = {2'd0, _zz_19_};
   assign _zz_21_ = {loader_waysAllocator,loader_waysAllocator[0]};
   assign _zz_22_ = {tagsWriteCmd_payload_data_address,{tagsWriteCmd_payload_data_error,tagsWriteCmd_payload_data_valid}};
+
+  //wtf ********************************************************************************
+  /*
   always @ (posedge clk) begin
     if(_zz_3_) begin
       _zz_10_ <= DC_DIR_tags[tagsReadCmd_payload];
@@ -643,10 +792,20 @@ module DataCache (
       DC_DIR_tags[tagsWriteCmd_payload_address] <= _zz_22_;
     end
   end
+  */
+  //wtf ********************************************************************************
+  always @ (posedge clk) begin
+    if(_zz_3_) begin
+      _zz_10_ <= dir_rd_dat;
+    end
+  end
 
   always @ (*) begin
     _zz_11_ = {_zz_26_, _zz_25_, _zz_24_, _zz_23_};
   end
+
+  //wtf ********************************************************************************
+  /*
   always @ (posedge clk) begin
     if(_zz_5_) begin
       _zz_23_ <= DC_DIR_data_symbol0[dataReadCmd_payload];
@@ -670,6 +829,19 @@ module DataCache (
       DC_DIR_data_symbol3[dataWriteCmd_payload_address] <= dataWriteCmd_payload_data[31 : 24];
     end
   end
+  */
+  always @ (posedge clk) begin
+    if(_zz_5_) begin
+      _zz_23_ <= cache_rd_dat[7:0];
+      _zz_24_ <= cache_rd_dat[15:8];
+      _zz_25_ <= cache_rd_dat[23:16];
+      _zz_26_ <= cache_rd_dat[31:24];
+    end
+  end
+
+  assign cache_we = dataWriteCmd_payload_mask & {4{_zz_1_}};
+
+  //wtf ********************************************************************************
 
   always @ (*) begin
     _zz_1_ = 1'b0;
@@ -1182,6 +1354,10 @@ module DataCache (
 endmodule
 
 module a2p (
+`ifdef USE_POWER_PINS
+    inout vccd1,	// User area 1 1.8V supply
+    inout vssd1,	// User area 1 digital ground
+`endif
   input      [31:0]   externalResetVector,
   input               timerInterrupt,
   input               externalInterrupt,
@@ -4060,15 +4236,17 @@ module a2p (
 
   reg [53:0] IBusCachedPlugin_predictor_history [0:1023];
 
-
   //wtf ********************************************************************************
-  // reg [31:0] RegFilePlugin_regFile [0:31] /* verilator public */ ;
-  // replace array and connect sigs to read/write ports
+  //reg [31:0] RegFilePlugin_regFile [0:31] /* verilator public */ ;
   wire [31:0] RegFilePlugin_regFileReadData1;
   wire [31:0] RegFilePlugin_regFileReadData2;
   wire [31:0] RegFilePlugin_regFileReadData3;
 
-  gpr #(.EXPAND_TYPE(`GPR_2R1W)) RegFilePlugin_regFile (
+  gpr #(.EXPAND_TYPE(`GPR_RA)) RegFilePlugin_regFile ( //DFFRF_2R1W
+`ifdef USE_POWER_PINS
+    .vccd1(vccd1),	// User area 1 1.8V supply
+    .vssd1(vssd1),	// User area 1 digital ground
+`endif
      .clk(clk),
      .rd_adr_0 (decode_RegFilePlugin_regFileReadAddress1),
      .rd_dat_0 (RegFilePlugin_regFileReadData1),
@@ -4076,13 +4254,12 @@ module a2p (
      .rd_dat_1 (RegFilePlugin_regFileReadData2),
      .rd_adr_2 (decode_RegFilePlugin_regFileReadAddress3),
      .rd_dat_2 (RegFilePlugin_regFileReadData3),
-     //.wr_en_0 (_zz_105_), <- weird how this gets created
+     //.wr_en_0 (_zz_105_), //<- weird how this gets created
      .wr_en_0 (lastStageRegFileWrite_valid),
      .wr_adr_0 (lastStageRegFileWrite_payload_address),
      .wr_dat_0 (lastStageRegFileWrite_payload_data)
   );
   //wtf ********************************************************************************
-
 
   function [6:0] zz_SPRPlugin_selfException_payload_imm(input dummy);
     begin
@@ -5266,6 +5443,7 @@ module a2p (
     end
   end
 
+//wtf ********************************************************************************
   always @ (posedge clk) begin
     if(_zz_657_) begin
 //      _zz_388_ <= RegFilePlugin_regFile[decode_RegFilePlugin_regFileReadAddress1];
@@ -5292,8 +5470,13 @@ module a2p (
 //      RegFilePlugin_regFile[lastStageRegFileWrite_payload_address] <= lastStageRegFileWrite_payload_data;
     end
   end
+  //wtf ********************************************************************************
 
   InstructionCache IBusCachedPlugin_cache (
+`ifdef USE_POWER_PINS
+     .io_vccd1(vccd1),	// User area 1 1.8V supply
+     .io_vssd1(vssd1),	// User area 1 digital ground
+`endif
     .io_flush                                     (_zz_365_                                                             ), //i
     .io_cpu_prefetch_isValid                      (_zz_366_                                                             ), //i
     .io_cpu_prefetch_haltIt                       (IBusCachedPlugin_cache_io_cpu_prefetch_haltIt                        ), //o
@@ -12967,10 +13150,22 @@ module a2p (
   assign dBus_rsp_valid = _zz_364_;
   assign dBus_rsp_payload_data = dBusWB_DAT_MISO_regNext;
   assign dBus_rsp_payload_error = 1'b0;
-  //always @ (posedge clk or posedge reset) begin
+
+  //wtf ********************************************************************************
+  // get rid of yosys: module $_ALDFFE_PPP_ not found
   always @ (posedge clk) begin
     if (reset) begin
       IBusCachedPlugin_fetchPc_pcReg <= externalResetVector;
+    end else begin
+      if((IBusCachedPlugin_fetchPc_booted && ((IBusCachedPlugin_fetchPc_output_ready || IBusCachedPlugin_fetchPc_correction) || IBusCachedPlugin_fetchPc_pcRegPropagate)))begin
+        IBusCachedPlugin_fetchPc_pcReg <= IBusCachedPlugin_fetchPc_pc;
+      end
+    end
+  end
+
+  always @ (posedge clk or posedge reset) begin
+    if (reset) begin
+      //IBusCachedPlugin_fetchPc_pcReg <= externalResetVector;
       IBusCachedPlugin_fetchPc_correctionReg <= 1'b0;
       IBusCachedPlugin_fetchPc_booted <= 1'b0;
       IBusCachedPlugin_fetchPc_inc <= 1'b0;
@@ -13042,9 +13237,9 @@ module a2p (
       if(((! IBusCachedPlugin_fetchPc_output_valid) && IBusCachedPlugin_fetchPc_output_ready))begin
         IBusCachedPlugin_fetchPc_inc <= 1'b0;
       end
-      if((IBusCachedPlugin_fetchPc_booted && ((IBusCachedPlugin_fetchPc_output_ready || IBusCachedPlugin_fetchPc_correction) || IBusCachedPlugin_fetchPc_pcRegPropagate)))begin
-        IBusCachedPlugin_fetchPc_pcReg <= IBusCachedPlugin_fetchPc_pc;
-      end
+      //if((IBusCachedPlugin_fetchPc_booted && ((IBusCachedPlugin_fetchPc_output_ready || IBusCachedPlugin_fetchPc_correction) || IBusCachedPlugin_fetchPc_pcRegPropagate)))begin
+      //  IBusCachedPlugin_fetchPc_pcReg <= IBusCachedPlugin_fetchPc_pc;
+      //end
       if(IBusCachedPlugin_iBusRsp_flush)begin
         _zz_140_ <= 1'b0;
       end
