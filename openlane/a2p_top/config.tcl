@@ -80,6 +80,7 @@ set ::env(VERILOG_FILES) "\
     	$script_dir/../../verilog/rtl/a2p/wrapper/ALUL.v \
     	$script_dir/../../verilog/rtl/a2p/wrapper/DataCache.v \
     	$script_dir/../../verilog/rtl/a2p/wrapper/InstructionCache.v \
+    	$script_dir/../../verilog/rtl/a2p/wrapper/SEL_PRI_32x4.v \
    "
 # dffram gpr
 #   	$script_dir/../../verilog/rtl/DFFRAM/wrapper/DFFRF_3R1W.v \
@@ -114,7 +115,7 @@ set ::env(CLOCK_NET) "clk"
 set ::env(CLOCK_PERIOD) "20"
 
 set ::env(FP_SIZING) absolute
-set ::env(DIE_AREA) "0 0 2500 2500"
+set ::env(DIE_AREA) "0 0 3000 3000"
 
 # Maximum layer used for routing is metal 4.
 # This is because this macro will be inserted in a top level (user_project_wrapper)
@@ -172,13 +173,14 @@ set ::env(PL_MAX_DISPLACEMENT_Y) 3000
 # a2p_top needs this or global place fails
 # then if you set it you get thesein detailed:
 #   TAP_18658 overlaps RegFilePluginComp_regFile
+# try changing target density wtf???
 set ::env(PL_BASIC_PLACEMENT) 1
-set ::env(PL_TARGET_DENSITY) 0.70
+set ::env(PL_TARGET_DENSITY) 0.15
 
 set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) 0
 set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) 0
 
-set ::env(CELL_PAD) 2
+set ::env(CELL_PAD) 3
 
 set ::env(PL_RESIZER_HOLD_SLACK_MARGIN) "0.3"
 set ::env(PL_RESIZER_MAX_SLEW_MARGIN) 2
