@@ -1,7 +1,7 @@
 `include "defs.v"
 
 module gpr #(
-   parameter EXPAND_TYPE=`INFERRED,
+   parameter EXPAND_TYPE=`GPR_3R1W,
    parameter USE_LATCH=0
 ) (
 `ifdef USE_POWER_PINS

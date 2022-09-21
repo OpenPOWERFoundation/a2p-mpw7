@@ -15,40 +15,7 @@
 
 # mgmt-core: https://github.com/efabless/caravel_mgmt_soc_litex/blob/main/openlane/mgmt_core/config.tcl
 
-# a2p_top
-#
-# hierarchy
-#  0. InstructionCache
-#  0. DataCache
-#  0. a2p
-#    1. DFFRF_3R1W
-#
-#  3 levels of hierarchy inc. top:
-#  RegFilePlugin could be split be above GPR
-#  IbusCachedPlugin could be split out and be above IC (IFU)
-#  an IBuffer could then be added after IFU
-#  DbusCachedPlugin could be split out and be above DC (LSU)
-#  and split pipe into Branch/Decode/Execute/Writeback
-#
-#  a2p
-#   ifu
-#    ic           x (lvs fail)
-#     ram32_1rw1r
-#   dec (/ib)
-#   bru
-#   fxu
-#     gpr
-#        dffram_32x32_3r1w      x
-#            or
-#        GPR (inferred)         x
-#     alu                       x
-#     alu-log                   x
-#     mul
-#     div
-#   lsu
-#    dc           x (lvs fail)
-#     ram32_1rw1r
-#   cmp
+# a2p_top (core with inner macros)
 #
 
 set ::env(PDK) $::env(PDK)
@@ -57,17 +24,20 @@ set ::env(STD_CELL_LIBRARY) "sky130_fd_sc_hd"
 set script_dir [file dirname [file normalize [info script]]]
 
 set ::env(DESIGN_NAME) a2p
+set ::env(OPENLANE_VERBOSE) 5
 
 # ---------------------------------------------------------------------------------------------
 # Core
 
 set ::env(VERILOG_FILES) "\
 	$::env(CARAVEL_ROOT)/verilog/rtl/defines.v \
-	$script_dir/../../verilog/rtl/a2p/a2p_top.v \
+	$script_dir/../../verilog/rtl/a2p/a2p_top_gpr.v \
+	$script_dir/../../verilog/rtl/a2p/gpr.v \
    "
 
-# include this above for dffram for now
-#	$script_dir/../../verilog/rtl/a2p/gpr.v \
+# include one of these above for inferred or dffram for now (instantiated as GPR or gpr, could change this and just select correct underlying macro)
+#	$script_dir/../../verilog/rtl/a2p/a2p_top.v \
+#	$script_dir/../../verilog/rtl/a2p/a2p_top_gpr.v \
 
 # ---------------------------------------------------------------------------------------------
 # Macros
@@ -75,24 +45,17 @@ set ::env(VERILOG_FILES) "\
 # empty modules (specifying I/O)
 
    set ::env(VERILOG_FILES_BLACKBOX) "\
-   	$script_dir/../../verilog/rtl/a2p/wrapper/GPR.v \
-    	$script_dir/../../verilog/rtl/a2p/wrapper/ALU.v \
-    	$script_dir/../../verilog/rtl/a2p/wrapper/ALUL.v \
-    	$script_dir/../../verilog/rtl/a2p/wrapper/DataCache.v \
-    	$script_dir/../../verilog/rtl/a2p/wrapper/InstructionCache.v \
-    	$script_dir/../../verilog/rtl/a2p/wrapper/SEL_PRI_32x4.v \
+      [glob $script_dir/../../verilog/rtl/a2p/wrapper/*.v] \
+   	$script_dir/../../verilog/rtl/DFFRAM/wrapper/DFFRF_3R1W.v \
    "
-# dffram gpr
-#   	$script_dir/../../verilog/rtl/DFFRAM/wrapper/DFFRF_3R1W.v \
-
 
 # generated lef, gds, lib
-set ::env(EXTRA_LEFS) "[glob $::env(DESIGN_DIR)/../../macros/a2p/lef/*.lef]"
-set ::env(EXTRA_GDS_FILES) "[glob $::env(DESIGN_DIR)/../../macros/a2p/gds/*]"
+#set ::env(EXTRA_LEFS) "[glob $::env(DESIGN_DIR)/../../macros/a2p/lef/*.lef]"
+#set ::env(EXTRA_GDS_FILES) "[glob $::env(DESIGN_DIR)/../../macros/a2p/gds/*]"
 
 # dffram gpr
-#set ::env(EXTRA_LEFS) "[glob $::env(DESIGN_DIR)/../../macros/a2p/lef/*.lef] $::env(DESIGN_DIR)/../../macros/DFFRAM/lef/DFFRF_3R1W.lef"
-#set ::env(EXTRA_GDS_FILES) "[glob $::env(DESIGN_DIR)/../../macros/a2p/gds/*] $::env(DESIGN_DIR)/../../macros/DFFRAM/gds/DFFRF_3R1W.gds"
+set ::env(EXTRA_LEFS) "[glob $::env(DESIGN_DIR)/../../macros/a2p/lef/*.lef] $::env(DESIGN_DIR)/../../macros/DFFRAM/lef/DFFRF_3R1W.lef"
+set ::env(EXTRA_GDS_FILES) "[glob $::env(DESIGN_DIR)/../../macros/a2p/gds/*] $::env(DESIGN_DIR)/../../macros/DFFRAM/gds/DFFRF_3R1W.gds"
 
 #set ::env(EXTRA_LIBS) [glob $::env(DESIGN_DIR)/../../macros/DFFRAM/lib/*.lib]
 
@@ -115,7 +78,8 @@ set ::env(CLOCK_NET) "clk"
 set ::env(CLOCK_PERIOD) "20"
 
 set ::env(FP_SIZING) absolute
-set ::env(DIE_AREA) "0 0 3000 3000"
+#set ::env(FP_SIZING) relative
+set ::env(DIE_AREA) "0 0 1600 3000"
 
 # Maximum layer used for routing is metal 4.
 # This is because this macro will be inserted in a top level (user_project_wrapper)
@@ -128,7 +92,6 @@ set ::env(RT_MAX_LAYER) {met4}
 set ::env(VDD_NETS) [list {vccd1}]
 set ::env(GND_NETS) [list {vssd1}]
 
-set ::env(DIODE_INSERTION_STRATEGY) 0
 # If you're going to use multiple power domains, then disable cvc run.
 set ::env(RUN_CVC) 1
 
@@ -164,18 +127,23 @@ set ::env(CTS_CLK_BUFFER_LIST) "sky130_fd_sc_hd__clkbuf_4 sky130_fd_sc_hd__clkbu
 #set ::env(CTS_SINK_CLUSTERING_SIZE) 20
 set ::env(CTS_DISABLE_POST_PROCESSING) 1
 set ::env(CTS_SINK_CLUSTERING_MAX_DIAMETER) 200
+
 set ::env(CTS_DISTANCE_BETWEEN_BUFFERS) 1000
 
 ## Placement
-set ::env(PL_MAX_DISPLACEMENT_X) 3000
-set ::env(PL_MAX_DISPLACEMENT_Y) 3000
+
+#set ::env(PL_MAX_DISPLACEMENT_X) 500
+#set ::env(PL_MAX_DISPLACEMENT_Y) 500
+set ::env(TAP_DECAP_INSERTION) 0
+set ::env(FILL_INSERTION) 0
+set ::env(DIODE_INSERTION_STRATEGY) 0
 
 # a2p_top needs this or global place fails
 # then if you set it you get thesein detailed:
 #   TAP_18658 overlaps RegFilePluginComp_regFile
 # try changing target density wtf???
 set ::env(PL_BASIC_PLACEMENT) 1
-set ::env(PL_TARGET_DENSITY) 0.15
+set ::env(PL_TARGET_DENSITY) 0.3
 
 set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) 0
 set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) 0
@@ -189,7 +157,11 @@ set ::env(PL_RESIZER_MAX_CAP_MARGIN) 2
 ## Routing
 #set ::env(GLB_RT_ALLOW_CONGESTION) 0
 #set ::env(GLB_RT_OVERFLOW_ITERS) 1000
-set ::env(GLB_RT_ADJUSTMENT) 0.3
+set ::env(GLB_RT_ADJUSTMENT) 0.2
+set ::env(GLB_RT_ALLOW_CONGESTION) 1
+set ::env(GLB_RT_OVERFLOW_ITERS) 5
+set ::env(PL_ROUTABILITY_DRIVEN) 1
+set ::env(DRT_OPT_ITERS) 1
 
 #set ::env(GLB_RT_MINLAYER) 2
 #set ::env(GLB_RT_MAXLAYER) 6
