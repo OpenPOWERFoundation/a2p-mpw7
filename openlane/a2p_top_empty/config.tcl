@@ -23,7 +23,7 @@ set ::env(STD_CELL_LIBRARY) "sky130_fd_sc_hd"
 
 set script_dir [file dirname [file normalize [info script]]]
 
-set ::env(DESIGN_NAME) a2p
+set ::env(DESIGN_NAME) a2p_macros
 set ::env(OPENLANE_VERBOSE) 5
 
 # ---------------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ set ::env(OPENLANE_VERBOSE) 5
 
 set ::env(VERILOG_FILES) "\
 	$::env(CARAVEL_ROOT)/verilog/rtl/defines.v \
-	$script_dir/../../verilog/rtl/a2p/a2p_top_gpr.v \
+	$script_dir/../../verilog/rtl/a2p/a2p_top_empty.v \
 	$script_dir/../../verilog/rtl/a2p/gpr.v \
    "
 
@@ -159,7 +159,7 @@ set ::env(PL_RESIZER_MAX_CAP_MARGIN) 2
 set ::env(GLB_RT_ADJUSTMENT) 0.2
 set ::env(GLB_RT_ALLOW_CONGESTION) 0
 set ::env(GLB_RT_OVERFLOW_ITERS) 100
-set ::env(DRT_OPT_ITERS) 1
+set ::env(DRT_OPT_ITERS) 50
 
 #set ::env(GLB_RT_MINLAYER) 2
 #set ::env(GLB_RT_MAXLAYER) 6

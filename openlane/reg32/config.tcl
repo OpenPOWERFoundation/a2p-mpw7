@@ -20,14 +20,14 @@ set ::env(STD_CELL_LIBRARY) "sky130_fd_sc_hd"
 
 set script_dir [file dirname [file normalize [info script]]]
 
-set ::env(DESIGN_NAME) WBExecute
+set ::env(DESIGN_NAME) REG32
 
 # ---------------------------------------------------------------------------------------------
 # Core
 
 set ::env(VERILOG_FILES) "\
 	$::env(CARAVEL_ROOT)/verilog/rtl/defines.v \
-	$script_dir/../../verilog/rtl/a2p/WBExecute.v \
+	$script_dir/../../verilog/rtl/a2p/REG32.v \
    "
 # ---------------------------------------------------------------------------------------------
 # Macros
@@ -38,12 +38,12 @@ set ::env(VERILOG_FILES) "\
 set ::env(DESIGN_IS_CORE) 0
 
 # no clock port - no cts but also no sta
-#set ::env(CLOCK_PORT) "clk"
+set ::env(CLOCK_PORT) "clk"
 #set ::env(CLOCK_NET) "clk"
 set ::env(CLOCK_PERIOD) "5"
 
 set ::env(FP_SIZING) absolute
-set ::env(DIE_AREA) "0 0 300 75"
+set ::env(DIE_AREA) "0 0 100 75"
 
 #set ::env(FP_PIN_ORDER_CFG) $script_dir/pin_order.cfg
 
@@ -95,7 +95,7 @@ set ::env(FP_PIN_ORDER_CFG) $script_dir/pin_order.cfg
 
 ## Placement
 set ::env(PL_BASIC_PLACEMENT) 0
-set ::env(PL_TARGET_DENSITY) 0.75
+set ::env(PL_TARGET_DENSITY) 0.82
 
 set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) 0
 set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) 0

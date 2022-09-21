@@ -1,8 +1,13 @@
 # A2P-FAF
 
+## try adding macros to empty toplevel - first 4
+
+<image src="./a2p_macros_1.png" width=75%>
+
+
 ## decompose to macros
 
-<image src="./drt_a2p_lef.png" width=100%>
+<image src="./drt_a2p_lef.png" width=75%>
 
    * stop after one drt optimization ```set ::env(DRT_OPT_ITERS) 1```
 
