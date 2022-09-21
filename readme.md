@@ -2,6 +2,9 @@
 
 ## try adding macros to empty toplevel - first 4
 
+* top logic pulled nicely between and wired nicely to macros up and down
+* macros go to rats-nest mode - superhighways should help escaping them
+
 <image src="./a2p_macros_1.png" width=75%>
 
 
